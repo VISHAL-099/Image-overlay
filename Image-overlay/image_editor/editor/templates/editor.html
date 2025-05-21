@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit PDF</title>
+    <style>
+        #base { position: relative; width: 100%; max-width: 600px; }
+        #pdf-preview { width: 100%; }
+        #overlay { position: absolute; top: 0; left: 0; cursor: move; }
+    </style>
+</head>
+<body>
+    <!-- editor/templates/editor.html -->
+<h2>Uploaded Files</h2>
+<h2>Uploaded PDF</h2>
+<embed src="{{ pdf_path }}" width="600" height="400" type="application/pdf" />
+<h3>Overlay Image</h3>
+<img src="{{ overlay_path }}" alt="Overlay" width="200" />
+
+<!-- Add controls for setting overlay position -->
+<script>
+    function submitPosition() {
+        const url = "{% url 'finalize_pdf' %}";
+        const x = document.getElementById('overlay-x').value; // Get the x position
+        const y = document.getElementById('overlay-y').value; // Get the y position
+        const scale = document.getElementById('overlay-scale').value; // Get the scale
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                pdf_path: '{{ pdf_path }}',
+                overlay_path: '{{ overlay_path }}',
+                x: x,
+                y: y,
+                scale: scale
+            })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = "merged_document.pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
+
+<!-- Controls for user input -->
+<input type="number" id="overlay-x" placeholder="X Position" value="0">
+<input type="number" id="overlay-y" placeholder="Y Position" value="0">
+<input type="number" id="overlay-scale" placeholder="Scale" value="1.0">
+<button onclick="submitPosition()">Finalize PDF</button>
+
+
+    <script>
+        const overlay = document.getElementById('overlay');
+        let posX = 0, posY = 0, scale = 1;
+
+        overlay.addEventListener('dragend', (e) => {
+            posX = e.clientX - overlay.offsetWidth / 2; // Adjust to center the overlay
+            posY = e.clientY - overlay.offsetHeight / 2; // Adjust to center the overlay
+        });
+
+        function submitPosition() {
+            fetch("{% url 'finalize_pdf' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ x: posX, y: posY, scale: scale })
+            }).then(response => response.blob()).then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "merged_document.pdf";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        }
+    </script>
+</body>
+</html>

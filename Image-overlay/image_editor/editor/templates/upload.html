@@ -1,0 +1,85 @@
+<!-- editor/templates/editor/upload.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor</title>
+    <style>
+        #canvas {
+            border: 1px solid #ccc;
+            cursor: move;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+</head>
+<body>
+    <h1>Upload Base Image and Overlay Image</h1>
+    <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Upload</button>
+</form>
+
+    <h2>Edit Overlay Image</h2>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div>
+        <input type="number" id="width" placeholder="Width" />
+        <input type="number" id="height" placeholder="Height" />
+        <button id="applySize">Apply Size</button>
+        <button id="download">Download Edited Image</button>
+    </div>
+
+    <script>
+        let baseImage = null;
+        let overlayImage = null;
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+
+        $(document).ready(function() {
+            $('#uploadForm').on('submit', function(event) {
+                event.preventDefault();
+                let formData = new FormData(this);
+
+                $.ajax({
+                    url: '{% url "upload_file" %}', // Update with your upload URL
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        baseImage = new Image();
+                        baseImage.src = response.baseImageUrl;
+                        baseImage.onload = function() {
+                            ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+                        };
+
+                        overlayImage = new Image();
+                        overlayImage.src = response.overlayImageUrl;
+                        overlayImage.onload = function() {
+                            ctx.drawImage(overlayImage, 100, 100, overlayImage.width, overlayImage.height);
+                        };
+                    }
+                });
+            });
+
+            $('#applySize').on('click', function() {
+                const newWidth = $('#width').val();
+                const newHeight = $('#height').val();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(overlayImage, 100, 100, newWidth, newHeight);
+            });
+
+            $('#download').on('click', function() {
+                const link = document.createElement('a');
+                link.download = 'edited_image.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+    </script>
+</body>
+</html>
